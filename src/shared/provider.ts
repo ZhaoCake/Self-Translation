@@ -15,8 +15,6 @@ export interface TranslateOptions {
     apiKey: string
     /** 自定义提示词 */
     customPrompt?: string
-    /** 模型名称 */
-    model?: string
 }
 
 /** 翻译结果 */

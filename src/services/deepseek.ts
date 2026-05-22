@@ -61,6 +61,8 @@ interface DeepSeekError {
 export class DeepSeekProvider implements TranslationProvider {
     name = 'DeepSeek'
 
+    private model = 'deepseek-v4-flash'
+
     /**
      * 翻译一批文本块
      */
@@ -78,7 +80,7 @@ export class DeepSeekProvider implements TranslationProvider {
             const systemPrompt = this.buildSystemPrompt(options)
             const userPrompt = this.buildUserPrompt(textsToTranslate, chunks.length)
 
-            const response = await this.callAPI(options.apiKey, systemPrompt, userPrompt, options.model)
+            const response = await this.callAPI(options.apiKey, systemPrompt, userPrompt)
 
             if (!response.ok) {
                 const errorData = await response.json() as DeepSeekError
@@ -122,7 +124,7 @@ export class DeepSeekProvider implements TranslationProvider {
      */
     async validateApiKey(apiKey: string): Promise<boolean> {
         try {
-            const response = await this.callAPI(apiKey, 'You are a helpful assistant.', 'Hello', 'deepseek-chat')
+            const response = await this.callAPI(apiKey, 'You are a helpful assistant.', 'Hello')
             return response.ok
         } catch {
             return false
@@ -132,9 +134,9 @@ export class DeepSeekProvider implements TranslationProvider {
     /**
      * 调用 DeepSeek API
      */
-    private async callAPI(apiKey: string, systemPrompt: string, userPrompt: string, model: string = 'deepseek-chat'): Promise<Response> {
+    private async callAPI(apiKey: string, systemPrompt: string, userPrompt: string): Promise<Response> {
         const request: DeepSeekRequest = {
-            model,
+            model: this.model,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },

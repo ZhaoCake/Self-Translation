@@ -21,7 +21,6 @@ interface PluginConfig {
     concurrency: number
     enableCache: boolean
     translateMode: 'split' | 'inline' | 'bilingual'
-    model: string
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -31,7 +30,6 @@ const DEFAULT_CONFIG: PluginConfig = {
     concurrency: 3,
     enableCache: true,
     translateMode: 'split',
-    model: 'deepseek-v4-flash',
 }
 
 const MessageType = {
@@ -996,7 +994,7 @@ async function translateTexts(texts: string[], config: PluginConfig): Promise<st
             'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: config.model,
+            model: 'deepseek-v4-flash',
             messages: [
                 { role: 'system', content: `Translate into ${targetLang}. Format each line as "number: translation". Output only translations.` },
                 { role: 'user', content: prompt }
