@@ -46,6 +46,7 @@ export class TranslationManager {
         const options: TranslateOptions = {
             targetLanguage: this.config.targetLanguage,
             apiKey,
+            model: this.config.model,
         }
 
         // 检查缓存

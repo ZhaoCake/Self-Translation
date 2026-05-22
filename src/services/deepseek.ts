@@ -25,6 +25,7 @@ interface DeepSeekRequest {
     temperature?: number
     max_tokens?: number
     stream?: boolean
+    thinking?: { type: 'enabled' | 'disabled' }
 }
 
 /** DeepSeek API 响应体 */
@@ -60,8 +61,6 @@ interface DeepSeekError {
 export class DeepSeekProvider implements TranslationProvider {
     name = 'DeepSeek'
 
-    private model = 'deepseek-chat'
-
     /**
      * 翻译一批文本块
      */
@@ -79,7 +78,7 @@ export class DeepSeekProvider implements TranslationProvider {
             const systemPrompt = this.buildSystemPrompt(options)
             const userPrompt = this.buildUserPrompt(textsToTranslate, chunks.length)
 
-            const response = await this.callAPI(options.apiKey, systemPrompt, userPrompt)
+            const response = await this.callAPI(options.apiKey, systemPrompt, userPrompt, options.model)
 
             if (!response.ok) {
                 const errorData = await response.json() as DeepSeekError
@@ -123,7 +122,7 @@ export class DeepSeekProvider implements TranslationProvider {
      */
     async validateApiKey(apiKey: string): Promise<boolean> {
         try {
-            const response = await this.callAPI(apiKey, 'You are a helpful assistant.', 'Hello')
+            const response = await this.callAPI(apiKey, 'You are a helpful assistant.', 'Hello', 'deepseek-chat')
             return response.ok
         } catch {
             return false
@@ -133,15 +132,16 @@ export class DeepSeekProvider implements TranslationProvider {
     /**
      * 调用 DeepSeek API
      */
-    private async callAPI(apiKey: string, systemPrompt: string, userPrompt: string): Promise<Response> {
+    private async callAPI(apiKey: string, systemPrompt: string, userPrompt: string, model: string = 'deepseek-chat'): Promise<Response> {
         const request: DeepSeekRequest = {
-            model: this.model,
+            model,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
             temperature: 0.3,
             stream: false,
+            thinking: { type: 'disabled' },
         }
 
         return fetch(DEEPSEEK_API_URL, {
@@ -158,41 +158,45 @@ export class DeepSeekProvider implements TranslationProvider {
      * 构建系统提示词
      */
     private buildSystemPrompt(options: TranslateOptions): string {
-        const targetLang = options.targetLanguage === 'zh-CN' ? '简体中文' : options.targetLanguage
+        const LANG_NAMES: Record<string, string> = {
+            'zh-CN': 'Simplified Chinese',
+            'zh-TW': 'Traditional Chinese',
+            'en': 'English',
+            'ja': 'Japanese',
+        }
+        const targetLang = LANG_NAMES[options.targetLanguage] || options.targetLanguage
 
-        return `你是一位精通各类科技领域（编程、工程、科学）的专业翻译专家。任务是将给定的技术文本翻译成${targetLang}。
+        return `You are a professional translator specializing in technical fields (programming, engineering, science). Your task is to translate the given text into ${targetLang}.
 
-这是一项对准确性要求极高的任务，请严格遵守以下【核心翻译规则】：
+Follow these core translation rules:
 
-1. **【绝对保留实体】(最高优先级)**
-   - **基于特征识别保留**：凡是具有代码特征、特定格式的词，一律保留原文。
-     - 包含符号的词：比如带点(.)、下划线(_)、括号()、井号(#)（如 \`torch.nn\`, \`user_id\`, \`render()\`, \`#header\`）。
-     - 混合大小写(驼峰)的词：如 \`tensorAttributes\`, \`XMLHttpRequest\`, \`iPhone\`。
-     - 全大写的常量/缩写：如 \`CUDA\`, \`HTTP\`, \`JSON\`。
-     - 文件路径、URL、版本号。
+1. **PRESERVE ENTITIES** (highest priority)
+   - Keep code-like terms unchanged: dotted names (\`torch.nn\`), underscores (\`user_id\`), parentheses, hash symbols
+   - Keep camelCase terms: \`tensorAttributes\`, \`XMLHttpRequest\`, \`iPhone\`
+   - Keep all-caps constants/abbreviations: \`CUDA\`, \`HTTP\`, \`JSON\`
+   - Keep file paths, URLs, version numbers
 
-2. **【智能术语处理】**
-   - **通用术语**：如 "Database"->"数据库"，"Algorithm"->"算法"，请进行标准翻译。
-   - **专有名词/特定概念**：
-     - 若该词在特定领域有固定且无歧义的中文译名（如 "Neural Network"->"神经网络"），请翻译。
-     - **关键规则**：若该词是特定框架/系统的核心概念，或者中文翻译容易产生歧义（如 "Tensor", "Embedding", "Middleware", "Layout", "Schema"），**请保留原文**，或使用 "中文(原文)" 格式。
-     - **原则：宁可保留英文，也不要强行意译**。
+2. **TERMINOLOGY HANDLING**
+   - General terms like "Database" → translate to standard ${targetLang} equivalent
+   - Domain-specific terms with well-known translations (e.g., "Neural Network") → translate
+   - Framework-specific concepts prone to ambiguity (e.g., "Tensor", "Embedding", "Middleware", "Layout", "Schema") → keep original, or use "translation(original)" format
+   - When in doubt, keep the English term rather than force a translation
 
-3. **【语体要求】**
-   - 译文应专业、简洁，符合技术人员阅读习惯。
-   - 严禁把代码里的英文单词强行翻译成中文（例如不要把 \`padding\` 翻译成 \`垫充\`）。
+3. **STYLE**
+   - Professional and concise, suitable for technical readers
+   - NEVER translate code elements (e.g., \`padding\` stays as \`padding\`)
 
-4. **【格式要求】**
-   - **必须**保留原文开头的序号标记 [数字]，格式为：[数字] 翻译后的文本
-   - 每段翻译独占一行。
-   - 不要添加额外的解释。`
+4. **FORMAT**
+   - Keep the [number] prefix at the start of each line: [number] translated text
+   - One translation per line
+   - No additional explanations or notes`
     }
 
     /**
      * 构建用户提示词
      */
     private buildUserPrompt(texts: string, count: number): string {
-        return `请翻译以下 ${count} 段文本：
+        return `Translate the following ${count} texts:
 
 ${texts}`
     }

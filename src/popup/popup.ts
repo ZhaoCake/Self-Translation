@@ -10,6 +10,8 @@ const state: { currentConfig: PluginConfig; isSaving: boolean } = {
 const elements = {
     modeRadios: () => document.querySelectorAll('input[name="translateMode"]') as NodeListOf<HTMLInputElement>,
     providerSelect: () => document.getElementById('provider') as HTMLSelectElement,
+    modelInput: () => document.getElementById('model') as HTMLInputElement,
+    targetLanguageSelect: () => document.getElementById('targetLanguage') as HTMLSelectElement,
     apiKeyInput: () => document.getElementById('apiKey') as HTMLInputElement,
     concurrencyInput: () => document.getElementById('concurrency') as HTMLInputElement,
     btnSave: () => document.getElementById('btn-save') as HTMLButtonElement,
@@ -65,6 +67,18 @@ function updateUI() {
     const providerSelect = elements.providerSelect()
     if (providerSelect) {
         providerSelect.value = currentConfig.provider
+    }
+
+    // 设置模型
+    const modelInput = elements.modelInput()
+    if (modelInput) {
+        modelInput.value = currentConfig.model || ''
+    }
+
+    // 设置目标语言
+    const targetLanguageSelect = elements.targetLanguageSelect()
+    if (targetLanguageSelect) {
+        targetLanguageSelect.value = currentConfig.targetLanguage
     }
 
     // 设置 API Key
@@ -123,12 +137,16 @@ async function handleSaveConfig() {
         const translateMode = (modeRadio?.value || 'split') as 'split' | 'inline' | 'bilingual'
 
         const provider = elements.providerSelect().value as LLMProvider
+        const model = elements.modelInput().value.trim()
+        const targetLanguage = elements.targetLanguageSelect().value
         const apiKey = elements.apiKeyInput().value.trim()
         const concurrency = parseInt(elements.concurrencyInput().value, 10) || 3
 
         // 更新配置对象
         state.currentConfig.translateMode = translateMode
         state.currentConfig.provider = provider
+        state.currentConfig.model = model || 'deepseek-v4-flash'
+        state.currentConfig.targetLanguage = targetLanguage
         state.currentConfig.apiKeys[provider] = apiKey
         state.currentConfig.concurrency = concurrency
 

@@ -21,6 +21,7 @@ interface PluginConfig {
     concurrency: number
     enableCache: boolean
     translateMode: 'split' | 'inline' | 'bilingual'
+    model: string
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -30,6 +31,7 @@ const DEFAULT_CONFIG: PluginConfig = {
     concurrency: 3,
     enableCache: true,
     translateMode: 'split',
+    model: 'deepseek-v4-flash',
 }
 
 const MessageType = {
@@ -190,12 +192,13 @@ async function startInlineTranslation() {
  */
 async function translateInline(config: PluginConfig) {
     const currentURL = window.location.href
+    const cacheKey = `${currentURL}|${config.targetLanguage}`
 
     // 初始化缓存
-    if (!translationCache[currentURL]) {
-        translationCache[currentURL] = {}
+    if (!translationCache[cacheKey]) {
+        translationCache[cacheKey] = {}
     }
-    const cache = translationCache[currentURL]
+    const cache = translationCache[cacheKey]
 
     // 收集文本节点（使用当前 document）
     const textNodes = collectTextNodes(document.body, document)
@@ -414,12 +417,13 @@ async function startBilingualTranslation() {
 
 async function translateBilingual(config: PluginConfig): Promise<boolean> {
     const currentURL = window.location.href
+    const cacheKey = `${currentURL}|${config.targetLanguage}`
 
     // 初始化缓存
-    if (!translationCache[currentURL]) {
-        translationCache[currentURL] = {}
+    if (!translationCache[cacheKey]) {
+        translationCache[cacheKey] = {}
     }
-    const cache = translationCache[currentURL]
+    const cache = translationCache[cacheKey]
     // 1. 收集块级元素
     const blocks = collectTranslatableBlocks(document.body)
     console.log(`[LLM翻译] 双语翻译(Block模式)：收集到 ${blocks.length} 个块级元素`)
@@ -783,14 +787,15 @@ async function translateRightPane(config: PluginConfig) {
 
     const doc = rightIframe.contentDocument
     const currentURL = window.location.href
+    const cacheKey = `${currentURL}|${config.targetLanguage}`
 
     console.log('[LLM翻译] 开始翻译:', currentURL)
 
     // 初始化缓存
-    if (!translationCache[currentURL]) {
-        translationCache[currentURL] = {}
+    if (!translationCache[cacheKey]) {
+        translationCache[cacheKey] = {}
     }
-    const cache = translationCache[currentURL]
+    const cache = translationCache[cacheKey]
 
     // 收集文本节点
     const textNodes = collectTextNodes(doc.body, doc)
@@ -980,7 +985,7 @@ function collectTextNodes(root: Element, doc: Document): TextNode[] {
 async function translateTexts(texts: string[], config: PluginConfig): Promise<string[]> {
     const apiKey = config.apiKeys[config.provider]
     const apiUrl = getAPIUrl(config.provider)
-    const targetLang = config.targetLanguage === 'zh-CN' ? '简体中文' : config.targetLanguage
+    const targetLang = LANG_NAMES[config.targetLanguage] || config.targetLanguage
 
     const prompt = texts.map((text, i) => `${i}: ${text}`).join('\n')
 
@@ -991,12 +996,13 @@ async function translateTexts(texts: string[], config: PluginConfig): Promise<st
             'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: 'deepseek-chat',
+            model: config.model,
             messages: [
-                { role: 'system', content: `翻译成${targetLang}。格式：每行 "序号: 翻译"。只输出翻译。` },
+                { role: 'system', content: `Translate into ${targetLang}. Format each line as "number: translation". Output only translations.` },
                 { role: 'user', content: prompt }
             ],
             temperature: 0.1,
+            thinking: { type: 'disabled' },
         }),
     })
 
@@ -1009,6 +1015,13 @@ async function translateTexts(texts: string[], config: PluginConfig): Promise<st
         const match = content.match(new RegExp(`^${index}[：:\\s]+(.+)$`, 'm'))
         return match ? match[1].trim() : originalText
     })
+}
+
+const LANG_NAMES: Record<string, string> = {
+    'zh-CN': 'Simplified Chinese',
+    'zh-TW': 'Traditional Chinese',
+    'en': 'English',
+    'ja': 'Japanese',
 }
 
 function getAPIUrl(provider: string): string {

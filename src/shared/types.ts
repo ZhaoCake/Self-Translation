@@ -118,6 +118,8 @@ export interface PluginConfig {
     enableCache: boolean
     /** 翻译模式: split(分屏) | inline(原网页/替换) | bilingual(双语对照) */
     translateMode: 'split' | 'inline' | 'bilingual'
+    /** 模型名称（可手动填写） */
+    model: string
 }
 
 /** 默认配置 */
@@ -128,6 +130,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
     concurrency: 3,
     enableCache: true,
     translateMode: 'split',
+    model: 'deepseek-v4-flash',
 }
 
 // ============ 翻译进度 ============
