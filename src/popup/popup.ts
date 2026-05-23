@@ -14,6 +14,8 @@ const elements = {
     targetLanguageSelect: () => document.getElementById('targetLanguage') as HTMLSelectElement,
     apiKeyInput: () => document.getElementById('apiKey') as HTMLInputElement,
     concurrencyInput: () => document.getElementById('concurrency') as HTMLInputElement,
+    fontSizeInput: () => document.getElementById('fontSize') as HTMLInputElement,
+    fontColorInput: () => document.getElementById('fontColor') as HTMLInputElement,
     btnSave: () => document.getElementById('btn-save') as HTMLButtonElement,
     toggleApiVisibility: () => document.getElementById('toggleApiVisibility') as HTMLElement,
     toast: () => document.getElementById('toast') as HTMLElement
@@ -86,6 +88,18 @@ function updateUI() {
     if (concurrencyInput) {
         concurrencyInput.value = String(currentConfig.concurrency)
     }
+
+    // 设置字体大小
+    const fontSizeInput = elements.fontSizeInput()
+    if (fontSizeInput) {
+        fontSizeInput.value = currentConfig.fontSize || '16'
+    }
+
+    // 设置字体颜色
+    const fontColorInput = elements.fontColorInput()
+    if (fontColorInput) {
+        fontColorInput.value = currentConfig.fontColor || '#333333'
+    }
 }
 
 function setupEventListeners() {
@@ -134,6 +148,8 @@ async function handleSaveConfig() {
         const targetLanguage = elements.targetLanguageSelect().value
         const apiKey = elements.apiKeyInput().value.trim()
         const concurrency = parseInt(elements.concurrencyInput().value, 10) || 3
+        const fontSize = elements.fontSizeInput().value.trim()
+        const fontColor = elements.fontColorInput().value.trim()
 
         // 更新配置对象
         state.currentConfig.translateMode = translateMode
@@ -141,6 +157,8 @@ async function handleSaveConfig() {
         state.currentConfig.targetLanguage = targetLanguage
         state.currentConfig.apiKeys[provider] = apiKey
         state.currentConfig.concurrency = concurrency
+        state.currentConfig.fontSize = fontSize || '16'
+        state.currentConfig.fontColor = fontColor || '#333333'
 
         // KEY CHANGE: 保存到本地存储
         await chrome.storage.local.set({ pluginConfig: state.currentConfig })

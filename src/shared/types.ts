@@ -118,6 +118,10 @@ export interface PluginConfig {
     enableCache: boolean
     /** 翻译模式: split(分屏) | inline(原网页/替换) | bilingual(双语对照) */
     translateMode: 'split' | 'inline' | 'bilingual'
+    /** 翻译字体大小 (px) */
+    fontSize: string
+    /** 翻译字体颜色 (hex) */
+    fontColor: string
 }
 
 /** 默认配置 */
@@ -128,6 +132,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
     concurrency: 3,
     enableCache: true,
     translateMode: 'split',
+    fontSize: '16',
+    fontColor: '#333333',
 }
 
 // ============ 翻译进度 ============

@@ -21,6 +21,8 @@ interface PluginConfig {
     concurrency: number
     enableCache: boolean
     translateMode: 'split' | 'inline' | 'bilingual'
+    fontSize: string
+    fontColor: string
 }
 
 const DEFAULT_CONFIG: PluginConfig = {
@@ -30,6 +32,8 @@ const DEFAULT_CONFIG: PluginConfig = {
     concurrency: 3,
     enableCache: true,
     translateMode: 'split',
+    fontSize: '16',
+    fontColor: '#333333',
 }
 
 const MessageType = {
@@ -191,6 +195,9 @@ async function startInlineTranslation() {
 async function translateInline(config: PluginConfig) {
     const currentURL = window.location.href
     const cacheKey = `${currentURL}|${config.targetLanguage}`
+
+    // 注入翻译字体样式
+    injectFontStyles(document, config)
 
     // 初始化缓存
     if (!translationCache[cacheKey]) {
@@ -449,8 +456,8 @@ async function translateBilingual(config: PluginConfig): Promise<boolean> {
         transDiv.style.display = 'block'
         transDiv.style.marginTop = '6px'
         transDiv.style.marginBottom = '8px'
-        transDiv.style.color = '#595959'
-        transDiv.style.fontSize = '14px'
+        transDiv.style.color = config.fontColor
+        transDiv.style.fontSize = config.fontSize + 'px'
         transDiv.style.lineHeight = '1.6'
         transDiv.style.fontWeight = 'normal'
         transDiv.style.padding = '6px 10px'
@@ -465,7 +472,7 @@ async function translateBilingual(config: PluginConfig): Promise<boolean> {
         if (/^H[1-6]$/.test(targetBlock.tagName)) {
             transDiv.style.marginTop = '8px'
             transDiv.style.fontWeight = 'bold'
-            transDiv.style.fontSize = '15px'
+            transDiv.style.fontSize = `calc(${config.fontSize}px + 2px)`
         }
 
         targetBlock.appendChild(transDiv)
@@ -552,6 +559,7 @@ function restoreBilingualPage() {
  * 恢复原网页翻译
  */
 function restoreInlinePage() {
+    removeFontStyles(document)
     // 恢复所有原始文本
     originalTexts.forEach((originalText, node) => {
         if (node.parentNode) {
@@ -786,6 +794,9 @@ async function translateRightPane(config: PluginConfig) {
     const doc = rightIframe.contentDocument
     const currentURL = window.location.href
     const cacheKey = `${currentURL}|${config.targetLanguage}`
+
+    // 注入翻译字体样式到右侧 iframe
+    injectFontStyles(doc, config)
 
     console.log('[LLM翻译] 开始翻译:', currentURL)
 
@@ -1362,6 +1373,28 @@ function injectStyles() {
         }
     `
     document.head.appendChild(style)
+}
+
+/**
+ * 注入翻译字体样式到指定文档
+ */
+function injectFontStyles(doc: Document, config: PluginConfig) {
+    const styleId = 'llm-font-styles'
+    let style = doc.getElementById(styleId) as HTMLStyleElement
+    if (!style) {
+        style = doc.createElement('style')
+        style.id = styleId
+        doc.head.appendChild(style)
+    }
+    style.textContent = `body{font-size:${config.fontSize}px!important;color:${config.fontColor}!important}`
+}
+
+/**
+ * 移除翻译字体样式
+ */
+function removeFontStyles(doc: Document) {
+    const style = doc.getElementById('llm-font-styles')
+    if (style) style.remove()
 }
 
 // 页面加载完成后创建浮动按钮
